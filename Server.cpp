@@ -78,18 +78,30 @@ int Server::sendBroadcastMessage(int clientfd, mysqlpp::Connection conn)
             return len;
         }
         //format send the message
-        sprintf(message, SERVER_MESSAGE, clientfd, buf);
-        mysqlpp::Query query = conn.query();
-        query << "insert into conver(id, text, time) values(""'" + to_string(clientfd) + "'"", ""'" + buf + "'"", now());";
-        query.execute();
+        if(buf[0] == '1'){
+            sprintf(message, SERVER_MESSAGE, clientfd, buf+2);
+            mysqlpp::Query query = conn.query();
+            query << "insert into conver(id, text, time) values(""'" + to_string(clientfd) + "'"", ""'" + buf + "'"", now());";
+            query.execute();
 
-        list<int>::iterator it;
-        for (it = clients_list.begin(); it != clients_list.end(); ++it) {
-            if (*it != clientfd) {
-                if (send(*it, message, BUF_SZIE, 0) < 0) {
-                    return -1;
+            list<int>::iterator it;
+            for (it = clients_list.begin(); it != clients_list.end(); ++it) {
+                if (*it != clientfd) {
+                    if (send(*it, message, BUF_SZIE, 0) < 0) {
+                        return -1;
+                    }
                 }
             }
+        }
+        else if(buf[0] >= '5'){
+            int temp = buf[0]-48;
+            sprintf(message, SERVER_MESSAGE, clientfd, buf+2);
+            mysqlpp::Query query = conn.query();
+            query << "insert into ppconver(send_id, recv_id, text, time) values(""'" + to_string(clientfd) + "'"", ""'" + to_string(temp) + "'"", ""'" + (buf+2) + "'"", now());";
+            if(send(temp, message, BUF_SZIE, 0) < 0) {
+                return -1;
+            }
+            query.execute();
         }
     }
     return len;
